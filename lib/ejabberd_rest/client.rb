@@ -1,14 +1,16 @@
 require "ejabberd_rest/errors"
+require "securerandom"
 
 module EjabberdRest
   class Client
-    attr_accessor :http_adapter, :mod_rest_url
+    attr_accessor :debug, :http_adapter, :mod_rest_url
 
     DEFAULT_MOD_REST_URL = "http://localhost:5285"
 
     def initialize(attributes={})
       @mod_rest_url = attributes[:url] || DEFAULT_MOD_REST_URL
       @http_adapter = attributes[:http_adapter] || :net_http
+      @debug        = attributes[:debug] || false
     end
 
     def add_user(username, domain, password)
@@ -29,12 +31,26 @@ module EjabberdRest
       post("/rest", body: "unregister #{username} #{domain}")
     end
 
+    def post_stanza(stanza)
+      post("/rest", body: stanza)
+    end
+
+    def pubsub_subscribe(jid, host, node)
+      stanza =  "<iq type='set' from='#{jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
+      stanza <<     "<subscribe node='#{node}' jid='#{jid}' />"
+      stanza <<   "</pubsub>"
+      stanza << "</iq>"
+
+      post_stanza(stanza)
+    end
+
   private
 
     def connection
       connection = Faraday.new(@mod_rest_url) do |builder|
         builder.request  :url_encoded
-        builder.response :logger
+        builder.response :logger if @debug
 
         builder.adapter @http_adapter
       end
