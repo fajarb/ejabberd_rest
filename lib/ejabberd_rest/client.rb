@@ -59,6 +59,16 @@ module EjabberdRest
       post_stanza(stanza)
     end
 
+    def pubsub_unsubscribe(jid, host, node)
+      stanza =  "<iq type='set' from='#{jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
+      stanza <<     "<unsubscribe node='#{node}' jid='#{jid}' />"
+      stanza <<   "</pubsub>"
+      stanza << "</iq>"
+
+      post_stanza(stanza)
+    end
+
   private
 
     def connection
