@@ -35,15 +35,23 @@ module EjabberdRest
       post("/rest", body: stanza)
     end
 
+    def pubsub_delete_node(from_jid, host, node)
+      stanza =  "<iq type='set' from='#{from_jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub#owner'>"
+      stanza <<     "<delete node='#{node}'/>"
+      stanza <<   "</pubsub>"
+      stanza << "</iq>"
+    end
+
     def pubsub_publish(from_jid, host, node, message)
       stanza =  "<iq type='set' from='#{from_jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
-      stanza << "  <pubsub xmlns='http://jabber.org/protocol/pubsub'>"
-      stanza << "    <publish node='#{node}'>"
-      stanza << "      <item id='#{SecureRandom.uuid}'>"
-      stanza << "        #{message}"
-      stanza << "      </item>"
-      stanza << "    </publish>"
-      stanza << "  </pubsub>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
+      stanza <<     "<publish node='#{node}'>"
+      stanza <<       "<item id='#{SecureRandom.uuid}'>"
+      stanza <<         "#{message}"
+      stanza <<       "</item>"
+      stanza <<     "</publish>"
+      stanza <<   "</pubsub>"
       stanza << "</iq>"
 
       post_stanza(stanza)
