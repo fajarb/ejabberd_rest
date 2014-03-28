@@ -153,7 +153,12 @@ module EjabberdRest
         request.body = options[:body] if options[:body]
       end
 
-      response.body
+      # Check if status code success
+      if response.status / 100 == 2
+        response.body
+      else
+        raise Exception
+      end
     end
   end
 end
