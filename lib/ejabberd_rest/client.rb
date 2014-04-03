@@ -35,6 +35,66 @@ module EjabberdRest
       post("/rest", body: stanza)
     end
 
+    def create_one_to_one_node(from_jid, host, node)
+      stanza =  "<iq type='set' from='#{from_jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
+      stanza <<     "<create node='#{node}'/>"
+      stanza <<     "<configure>"
+      stanza <<       "<x xmlns='jabber:x:data' type='submit'>"
+      stanza <<         "<field var='FORM_TYPE' type='hidden'>"
+      stanza <<           "<value>http://jabber.org/protocol/pubsub#node_config</value>"
+      stanza <<         "</field>"
+      stanza <<         "<field var='pubsub#access_model'><value>whitelist</value></field>"
+      stanza <<         "<field var='pubsub#persist_items'><value>1</value></field>"
+      stanza <<         "<field var='pubsub#notify_sub'><value>1</value></field>"
+      stanza <<         "<field var='pubsub#title'><value>Untitled</value></field>"
+      stanza <<         "<field var='pubsub#notification_type'><value>normal</value></field>"
+      stanza <<         "<field var='pubsub#send_last_published_item'><value>never</value></field>"
+      stanza <<       "</x>"
+      stanza <<     "</configure>"
+      stanza <<   "</pubsub>"
+      stanza << "</iq>"
+
+      post_stanza(stanza)
+    end
+
+    def create_multiuser_node(from_jid, host, node)
+      stanza =  "<iq type='set' from='#{from_jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
+      stanza <<     "<create node='#{node}'/>"
+      stanza <<     "<configure>"
+      stanza <<       "<x xmlns='jabber:x:data' type='submit'>"
+      stanza <<         "<field var='FORM_TYPE' type='hidden'>"
+      stanza <<           "<value>http://jabber.org/protocol/pubsub#node_config</value>"
+      stanza <<         "</field>"
+      stanza <<         "<field var='pubsub#publish_model'><value>open</value></field>"
+      stanza <<         "<field var='pubsub#persist_items'><value>1</value></field>"
+      stanza <<         "<field var='pubsub#notify_sub'><value>1</value></field>"
+      stanza <<         "<field var='pubsub#title'><value>Untitled</value></field>"
+      stanza <<         "<field var='pubsub#notification_type'><value>normal</value></field>"
+      stanza <<         "<field var='pubsub#send_last_published_item'><value>never</value></field>"
+      stanza <<       "</x>"
+      stanza <<     "</configure>"
+      stanza <<   "</pubsub>"
+      stanza << "</iq>"
+
+      post_stanza(stanza)
+    end
+
+    def modify_affiliations(from_jid, host, node, affiliations = {})
+      stanza =  "<iq type='set' from='#{from_jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub#owner'>"
+      stanza <<     "<affiliations node='#{node}'>"
+      affiliations.each do |k,v|
+        stanza <<     "<affiliation jid='#{k}' affiliation='#{v}' />"
+      end
+      stanza <<     "</affiliations>"
+      stanza <<   "</pubsub>"
+      stanza << "</iq>"
+
+      post_stanza(stanza)
+    end
+
     def pubsub_delete_node(from_jid, host, node)
       stanza =  "<iq type='set' from='#{from_jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
       stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub#owner'>"
@@ -57,20 +117,20 @@ module EjabberdRest
       post_stanza(stanza)
     end
 
-    def pubsub_subscribe(jid, host, node)
+    def pubsub_subscribe(jid, host, node, resource)
       stanza =  "<iq type='set' from='#{jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
       stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
-      stanza <<     "<subscribe node='#{node}' jid='#{jid}' />"
+      stanza <<     "<subscribe node='#{node}' jid='#{jid}/#{resource}' />"
       stanza <<   "</pubsub>"
       stanza << "</iq>"
 
       post_stanza(stanza)
     end
 
-    def pubsub_unsubscribe(jid, host, node)
+    def pubsub_unsubscribe(jid, host, node, resource)
       stanza =  "<iq type='set' from='#{jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
       stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
-      stanza <<     "<unsubscribe node='#{node}' jid='#{jid}' />"
+      stanza <<     "<unsubscribe node='#{node}' jid='#{jid}/#{resource}' />"
       stanza <<   "</pubsub>"
       stanza << "</iq>"
 
@@ -93,7 +153,12 @@ module EjabberdRest
         request.body = options[:body] if options[:body]
       end
 
-      response.body
+      # Check if status code success
+      if response.status / 100 == 2
+        response.body
+      else
+        raise Exception
+      end
     end
   end
 end
