@@ -78,24 +78,6 @@ module EjabberdRest
       post_stanza(stanza)
     end
 
-    def pubsub_subscribe_all_resources(jid, pubsub_service, node, resources)
-      @connection.in_parallel do
-        resources.each do |r|
-          post("/rest", body: subscribe_stanza(jid, pubsub_service, node, r))
-        end
-      end
-    end
-
-    def pubsub_unsubscribe(jid, host, node, resource)
-      stanza =  "<iq type='set' from='#{jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
-      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
-      stanza <<     "<unsubscribe node='#{node}' jid='#{jid}/#{resource}' />"
-      stanza <<   "</pubsub>"
-      stanza << "</iq>"
-
-      post_stanza(stanza)
-    end
-
     def subscribe_stanza(jid, pubsub_service, node, resource)
       stanza =  "<iq type='set' from='#{jid}' to='#{pubsub_service}' id='#{SecureRandom.uuid}'>"
       stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
@@ -105,6 +87,41 @@ module EjabberdRest
 
       stanza
     end
+
+    def pubsub_subscribe(jid, pubsub_service, node, resource)
+      post_stanza(subscribe_stanza(jid, pubsub_service, node, resource))
+    end
+
+    def pubsub_subscribe_all_resources(jid, pubsub_service, node, resources)
+      @connection.in_parallel do
+        resources.each do |r|
+          pubsub_subscribe(jid, pubsub_service, node, r)
+        end
+      end
+    end
+
+    def unsubscribe_stanza(jid, pubsub_service, node, resource)
+      stanza =  "<iq type='set' from='#{jid}' to='#{pubsub_service}' id='#{SecureRandom.uuid}'>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
+      stanza <<     "<unsubscribe node='#{node}' jid='#{jid}/#{resource}' />"
+      stanza <<   "</pubsub>"
+      stanza << "</iq>"
+
+      stanza
+    end
+
+    def pubsub_unsubscribe(jid, pubsub_service, node, resource)
+      post_stanza(unsubscribe_stanza(jid, pubsub_service, node, resource))
+    end
+
+    def pubsub_unsubscribe_all_resources(jid, pubsub_service, node, resources)
+      @connection.in_parallel do
+        resources.each do |r|
+          pubsub_unsubscribe(jid, pubsub_service, node, r)
+        end
+      end
+    end
+
 
 
   private
