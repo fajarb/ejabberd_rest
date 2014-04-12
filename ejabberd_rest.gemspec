@@ -23,4 +23,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "pry"
 
   spec.add_runtime_dependency "faraday", "~> 0.9.0"
+  spec.add_runtime_dependency "typhoeus", "~> 0.6.8"
 end

@@ -3,14 +3,21 @@ require "securerandom"
 
 module EjabberdRest
   class Client
-    attr_accessor :debug, :http_adapter, :mod_rest_url
+    attr_accessor :debug, :max_concurrency, :mod_rest_url
 
     DEFAULT_MOD_REST_URL = "http://localhost:5285"
 
     def initialize(attributes={})
-      @mod_rest_url = attributes[:url] || DEFAULT_MOD_REST_URL
-      @http_adapter = attributes[:http_adapter] || :net_http
-      @debug        = attributes[:debug] || false
+      mod_rest_url = attributes[:url] || DEFAULT_MOD_REST_URL
+      debug        = attributes[:debug] || false
+      max_concurrency = attributes[:max_concurrency] || 100
+
+      manager = Typhoeus::Hydra.new(max_concurrency: 100)
+      @connection = Faraday.new(mod_rest_url, parallel_manager: manager) do |builder|
+        builder.request  :url_encoded
+        builder.response :logger if debug
+        builder.adapter  :typhoeus
+      end
     end
 
     def add_user(username, domain, password)
@@ -71,14 +78,12 @@ module EjabberdRest
       post_stanza(stanza)
     end
 
-    def pubsub_subscribe(jid, host, node, resource)
-      stanza =  "<iq type='set' from='#{jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
-      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
-      stanza <<     "<subscribe node='#{node}' jid='#{jid}/#{resource}' />"
-      stanza <<   "</pubsub>"
-      stanza << "</iq>"
-
-      post_stanza(stanza)
+    def pubsub_subscribe_all_resources(jid, pubsub_service, node, resources)
+      @connection.in_parallel do
+        resources.each do |r|
+          post("/rest", body: subscribe_stanza(jid, pubsub_service, node, r))
+        end
+      end
     end
 
     def pubsub_unsubscribe(jid, host, node, resource)
@@ -91,28 +96,26 @@ module EjabberdRest
       post_stanza(stanza)
     end
 
+    def subscribe_stanza(jid, pubsub_service, node, resource)
+      stanza =  "<iq type='set' from='#{jid}' to='#{pubsub_service}' id='#{SecureRandom.uuid}'>"
+      stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
+      stanza <<     "<subscribe node='#{node}' jid='#{jid}/#{resource}' />"
+      stanza <<   "</pubsub>"
+      stanza << "</iq>"
+
+      stanza
+    end
+
+
   private
 
-    def connection
-      connection = Faraday.new(@mod_rest_url) do |builder|
-        builder.request  :url_encoded
-        builder.response :logger if @debug
-
-        builder.adapter @http_adapter
+    def post(path, options={})
+      @connection.post do |req|
+        req.url path
+        req.options[:timeout] = 60
+        req.body = options[:body] if options[:body]
       end
     end
 
-    def post(path, options)
-      response = connection.send(:post, path) do |request|
-        request.body = options[:body] if options[:body]
-      end
-
-      # Check if status code success
-      if response.status / 100 == 2
-        response.body
-      else
-        raise Exception, "HTTP status code: #{response.status} == Body: #{response.body}"
-      end
-    end
   end
 end
