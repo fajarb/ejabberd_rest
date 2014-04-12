@@ -42,6 +42,14 @@ module EjabberdRest
       post("/rest", body: stanza)
     end
 
+    def post_all_stanzas(stanzas)
+      @connection.in_parallel do
+        stanzas.each do |stanza|
+          post_stanza(stanza)
+        end
+      end
+    end
+
     def modify_affiliations(from_jid, host, node, affiliations = {})
       stanza =  "<iq type='set' from='#{from_jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
       stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub#owner'>"
@@ -64,7 +72,7 @@ module EjabberdRest
       stanza << "</iq>"
     end
 
-    def pubsub_publish(from_jid, host, node, message)
+    def pubsub_item_stanza(from_jid, host, node, message)
       stanza =  "<iq type='set' from='#{from_jid}' to='#{host}' id='#{SecureRandom.uuid}'>"
       stanza <<   "<pubsub xmlns='http://jabber.org/protocol/pubsub'>"
       stanza <<     "<publish node='#{node}'>"
@@ -75,7 +83,19 @@ module EjabberdRest
       stanza <<   "</pubsub>"
       stanza << "</iq>"
 
-      post_stanza(stanza)
+      stanza
+    end
+
+    def pubsub_publish(from_jid, host, node, message)
+      post_stanza(pubsub_item_stanza(from_jid, host, node, message))
+    end
+
+    def pubsub_publish_all_items(from_jid, host, node, items)
+      @connection.in_parallel do
+        items.each do |item|
+          pubsub_publish(from_jid, host, node, item)
+        end
+      end
     end
 
     def subscribe_stanza(jid, pubsub_service, node, resource)
