@@ -70,6 +70,8 @@ module EjabberdRest
       stanza <<     "<delete node='#{node}'/>"
       stanza <<   "</pubsub>"
       stanza << "</iq>"
+
+      post_stanza(stanza)
     end
 
     def pubsub_item_stanza(from_jid, host, node, message)
