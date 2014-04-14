@@ -21,12 +21,12 @@ module EjabberdRest
     end
 
     def add_user(username, domain, password)
-      rbody = post("/rest", body: "register #{username} #{domain} #{password}")
+      response = post("/rest", body: "register #{username} #{domain} #{password}")
 
-      if rbody.include?("successfully registered")
+      if response.body.include?("successfully registered")
         true
       else
-        if rbody.include?("already registered")
+        if response.body.include?("already registered")
           raise Error::UserAlreadyRegistered
         else
           false
