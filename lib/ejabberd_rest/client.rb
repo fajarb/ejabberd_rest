@@ -17,6 +17,8 @@ module EjabberdRest
         builder.request  :url_encoded
         builder.response :logger if debug
         builder.adapter  :typhoeus
+        builder.options.timeout = 3
+        builder.options.open_timeout = 2
       end
     end
 
