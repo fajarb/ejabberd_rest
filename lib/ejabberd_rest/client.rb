@@ -7,18 +7,15 @@ module EjabberdRest
 
     DEFAULT_MOD_REST_URL = "http://localhost:5285"
 
-    def initialize(attributes={})
-      mod_rest_url = attributes[:url] || DEFAULT_MOD_REST_URL
-      debug        = attributes[:debug] || false
-      max_concurrency = attributes[:max_concurrency] || 100
+    def initialize(url=DEFAULT_MOD_REST_URL, options={})
+      manager = Typhoeus::Hydra.new(max_concurrency: options[:max_concurrency] || 25)
 
-      manager = Typhoeus::Hydra.new(max_concurrency: 100)
-      @connection = Faraday.new(mod_rest_url, parallel_manager: manager) do |builder|
+      @connection = Faraday.new(url, parallel_manager: manager) do |builder|
         builder.request  :url_encoded
-        builder.response :logger if debug
+        builder.response :logger if options[:debug]
         builder.adapter  :typhoeus
-        builder.options.timeout = 3
-        builder.options.open_timeout = 2
+        builder.options.timeout = options[:timeout] || 3
+        builder.options.open_timeout = options[:open_timeout] || 1
       end
     end
 
@@ -147,13 +144,11 @@ module EjabberdRest
     end
 
 
-
   private
 
     def post(path, options={})
       @connection.post do |req|
         req.url path
-        req.options[:timeout] = 60
         req.body = options[:body] if options[:body]
       end
     end
